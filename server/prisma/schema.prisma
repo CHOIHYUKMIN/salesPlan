@@ -1,0 +1,218 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User and Organization Models
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(USER)
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  yearPlans   YearPlan[]
+  monthPlans  MonthPlan[]
+  tasks       Task[]
+  results     Result[]
+
+  @@map("users")
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  deptId    String?
+  dept      Dept?    @relation(fields: [deptId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  yearPlans  YearPlan[]
+  monthPlans MonthPlan[]
+
+  @@map("teams")
+}
+
+model Dept {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams Team[]
+
+  @@map("depts")
+}
+
+// Planning Models
+model YearPlan {
+  id          String         @id @default(uuid())
+  year        Int
+  title       String
+  description String?
+  status      PlanStatus     @default(DRAFT)
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  teamId      String?
+  team        Team?          @relation(fields: [teamId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  monthPlans MonthPlan[]
+  kpis       KPI[]
+
+  @@map("year_plans")
+}
+
+model MonthPlan {
+  id          String     @id @default(uuid())
+  yearPlanId  String
+  yearPlan    YearPlan   @relation(fields: [yearPlanId], references: [id])
+  month       Int
+  title       String
+  description String?
+  status      PlanStatus @default(DRAFT)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  teamId      String?
+  team        Team?      @relation(fields: [teamId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tasks Task[]
+
+  @@map("month_plans")
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  monthPlanId String
+  monthPlan   MonthPlan  @relation(fields: [monthPlanId], references: [id])
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  startDate   DateTime?
+  endDate     DateTime?
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  companyId   String?
+  company     Company?   @relation(fields: [companyId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  results Result[]
+
+  @@map("tasks")
+}
+
+// Result Models
+model Result {
+  id          String       @id @default(uuid())
+  taskId      String?
+  task        Task?        @relation(fields: [taskId], references: [id])
+  title       String
+  description String?
+  resultDate  DateTime
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  companyId   String?
+  company     Company?     @relation(fields: [companyId], references: [id])
+  meetingId   String?      @unique
+  meeting     Meeting?     @relation(fields: [meetingId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("results")
+}
+
+// Company and Meeting Models
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  category  String?
+  contact   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks    Task[]
+  results  Result[]
+  meetings Meeting[]
+
+  @@map("companies")
+}
+
+model Meeting {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  startTime       DateTime
+  endTime         DateTime
+  location        String?
+  companyId       String?
+  company         Company? @relation(fields: [companyId], references: [id])
+  googleEventId   String?  @unique
+  googleCalendarId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  result Result?
+
+  @@map("meetings")
+}
+
+// KPI Model
+model KPI {
+  id         String   @id @default(uuid())
+  yearPlanId String
+  yearPlan   YearPlan @relation(fields: [yearPlanId], references: [id])
+  name       String
+  target     Float
+  actual     Float    @default(0)
+  unit       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("kpis")
+}
+
+// Enums
+enum UserRole {
+  USER
+  TEAM_LEADER
+  DEPT_LEADER
+  ADMIN
+}
+
+enum PlanStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
